@@ -13,7 +13,7 @@ use LaravelDaily\Invoices\Classes\InvoiceItem;
 
 class DownloadLabelController extends Controller
 {
-    
+
     public function downloadlabel(Request $request)
     {
         // dd($request->all());
@@ -82,7 +82,7 @@ class DownloadLabelController extends Controller
     {
         // get all the orders for order_awb
         $orders = Order::where('order_awb', $request->order_awb)->get();
-        
+
         if(count($orders) == 0)
         {
             return redirect()->back()->with([
@@ -122,8 +122,8 @@ class DownloadLabelController extends Controller
             ]);
         }
 
-        
-        
+
+
         $customer = new Party([
             'name'          => $orders->first()->customer_name,
             'billing_address'       => $orders->first()->dropoff_streetaddress1.' '.$orders->first()->dropoff_streetaddress2.' '.$orders->first()->dropoff_pincode.' '.$orders->first()->dropoff_city.' '.$orders->first()->dropoff_state.' '.$orders->first()->dropoff_country,
@@ -140,9 +140,9 @@ class DownloadLabelController extends Controller
                 'gst' => $orders->first()->gst_number,
             ],
         ]);
-        
+
         $items = [];
-        
+
         foreach($orders as $item)
         {
 
@@ -156,9 +156,9 @@ class DownloadLabelController extends Controller
                     {
                         $vendorgst =  ', GST Number:'.$item->product->vendor->gst_number;
                     }else{
-                        $vendorgst = '';    
+                        $vendorgst = '';
                     }
-                    
+
                 }else{
                     $vendor =  '';
                     $vendorgst = '';
@@ -224,14 +224,15 @@ class DownloadLabelController extends Controller
 
             if(!empty($item->product->productsubcategory->gst))
             {
-                
-                $gstcharged = $item->product_offerprice * $item->product->productsubcategory->gst / 100;
-                $productpricewithoutgst = $item->product_offerprice - $gstcharged;
+
+                $productpricewithoutgst = ($item->product_offerprice * 100) / (100 + $item->product->productsubcategory->gst);
+                $gstcharged = $item->product_offerprice - $productpricewithoutgst;
+                // return $item->product_offerprice;
             }else{
                 $gstcharged = 0.00;
                 $productpricewithoutgst = $item->product_offerprice;
             }
-            
+
 
             $items[] = (new InvoiceItem())
                 ->title($item->product->name)
@@ -258,7 +259,7 @@ class DownloadLabelController extends Controller
 
         // dd($orderdiscount);
         // dd($orders->first()->order_deliverycharges);
-        
+
 
         $invoice = Invoice::make('Tax Invoice')
             // ->series('BIG')
@@ -287,6 +288,7 @@ class DownloadLabelController extends Controller
             ->shipping($orders->first()->order_deliverycharges)
             ->totalTaxes($orders->first()->order_tax)
             ->finalTotal($orders->first()->order_total)
+            ->template('new_default')
             ->logo(setting('order-invoice.logo_url'));
             // ->logo(url('storage/'.setting('site.logo')))
             // You can additionally save generated invoice to configured disk
@@ -294,10 +296,10 @@ class DownloadLabelController extends Controller
 
         $url = $invoice->url();
         // dd('a');
-        return $invoice->stream();
+        return $invoice->toHtml();
 
     }
 
 
-    
+
 }
